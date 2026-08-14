@@ -1,0 +1,423 @@
+/* La Casa Maldita — estilos de interfaz */
+
+:root {
+  color-scheme: dark;
+  --bg: #000;
+  --panel: #0d0a0a;
+  --panel-soft: #1a1414;
+  --text: #c9c2b8;
+  --muted: #776f66;
+  --muted-dark: #665f57;
+  --border: #5a2020;
+  --accent: #8a1414;
+  --accent-soft: #7a2828;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Courier New", monospace;
+  touch-action: none;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  margin: 6px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 14px 28px;
+  background: var(--panel-soft);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 1em;
+  letter-spacing: 2px;
+  transition: background-color 0.15s, color 0.15s, opacity 0.15s;
+}
+
+button:hover,
+button:active,
+button:focus-visible {
+  background: var(--border);
+  color: #fff;
+}
+
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid #c9a0a0;
+  outline-offset: 2px;
+}
+
+button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+#game {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100vw;
+  height: 100vh;
+  isolation: isolate;
+}
+
+canvas {
+  display: block;
+  max-width: 100vw;
+  max-height: 100vh;
+  background: var(--bg);
+  image-rendering: pixelated;
+}
+
+/* Pantallas superpuestas */
+.screen {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(3, 2, 2, 0.96);
+  text-align: center;
+}
+
+.hidden {
+  display: none !important;
+}
+
+h1 {
+  margin: 0 0 6px;
+  color: var(--accent);
+  font-size: 2.4em;
+  letter-spacing: 4px;
+  text-shadow: 0 0 18px var(--accent), 0 0 40px #400;
+}
+
+h1 span {
+  display: block;
+  margin-top: 6px;
+  color: var(--text);
+  font-size: 0.4em;
+  letter-spacing: 2px;
+  text-shadow: none;
+}
+
+.subtitle {
+  margin-bottom: 30px;
+  color: var(--muted);
+  font-size: 0.9em;
+}
+
+.small {
+  max-width: 480px;
+  margin-top: 20px;
+  color: var(--muted-dark);
+  font-size: 0.75em;
+  line-height: 1.6;
+}
+
+.end-description {
+  margin-top: 20px;
+  color: #b5afa6;
+  font-size: 0.95em;
+}
+
+/* HUD */
+#hud {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 10;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 10px 14px;
+  font-size: 0.8em;
+  pointer-events: none;
+}
+
+#roomName {
+  color: #7a736a;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  text-shadow: 0 0 6px #000;
+}
+
+.hud-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+#saveIndicator {
+  color: #4a5a3a;
+  opacity: 0;
+  text-shadow: 0 0 6px #000;
+  transition: opacity 0.4s;
+}
+
+#saveIndicator.show {
+  opacity: 1;
+}
+
+#muteBtn {
+  width: 40px;
+  height: 32px;
+  margin: 0;
+  padding: 6px 10px;
+  border-color: #333;
+  background: rgba(0, 0, 0, 0.4);
+  color: var(--muted);
+  font-size: 0.9em;
+  pointer-events: auto;
+}
+
+#prompt {
+  position: absolute;
+  bottom: 130px;
+  left: 50%;
+  z-index: 10;
+  max-width: calc(100vw - 32px);
+  padding: 8px 16px;
+  transform: translateX(-50%);
+  border: 1px solid #444;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.75);
+  color: #d4cfc4;
+  font-size: 0.85em;
+  opacity: 0;
+  pointer-events: none;
+  text-align: center;
+  transition: opacity 0.15s;
+  white-space: nowrap;
+}
+
+#prompt.show {
+  opacity: 1;
+}
+
+#message {
+  position: absolute;
+  top: 46%;
+  left: 50%;
+  z-index: 20;
+  max-width: 80vw;
+  padding: 14px 22px;
+  transform: translate(-50%, -50%);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.85);
+  color: #d4a5a5;
+  font-size: 0.9em;
+  opacity: 0;
+  pointer-events: none;
+  text-align: center;
+  transition: opacity 0.25s;
+}
+
+#message.show {
+  opacity: 1;
+}
+
+/* Inventario */
+#inventory {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 10;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.6), transparent);
+}
+
+.item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border: 1px solid #443;
+  border-radius: 4px;
+  background: rgba(20, 15, 15, 0.8);
+  font-size: 1.4em;
+  pointer-events: auto;
+}
+
+.item.empty {
+  border-style: dashed;
+  border-color: #2a2a2a;
+  opacity: 0.4;
+}
+
+/* Controles táctiles */
+#touchControls {
+  position: absolute;
+  right: 0;
+  bottom: 70px;
+  left: 0;
+  z-index: 10;
+  display: flex;
+  justify-content: space-between;
+  padding: 0 16px;
+  pointer-events: none;
+}
+
+#dpad {
+  display: grid;
+  grid-template-columns: repeat(3, 44px);
+  grid-template-rows: repeat(3, 44px);
+  gap: 3px;
+  pointer-events: auto;
+}
+
+#dpad button {
+  width: 44px;
+  height: 44px;
+  margin: 0;
+  padding: 0;
+  border-color: #443;
+  background: rgba(20, 15, 15, 0.55);
+  font-size: 1.1em;
+}
+
+#dpad .u { grid-area: 1 / 2; }
+#dpad .l { grid-area: 2 / 1; }
+#dpad .d { grid-area: 3 / 2; }
+#dpad .r { grid-area: 2 / 3; }
+
+#actionBtn {
+  align-self: flex-end;
+  width: 68px;
+  height: 68px;
+  margin: 0;
+  padding: 0;
+  border-radius: 50%;
+  background: rgba(90, 32, 32, 0.5);
+  border-color: #7a2828;
+  font-size: 0.75em;
+  pointer-events: auto;
+}
+
+/* Modal de acertijos */
+#puzzleModal {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.92);
+}
+
+.puzzleBox {
+  width: 100%;
+  max-width: 440px;
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  text-align: center;
+}
+
+.puzzleBox h3 {
+  margin-top: 0;
+  color: #b06a6a;
+  letter-spacing: 1px;
+}
+
+.puzzleBox p {
+  color: #b5afa6;
+  font-size: 0.9em;
+  line-height: 1.6;
+}
+
+.puzzleBox input {
+  width: 140px;
+  margin: 10px 0;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--panel-soft);
+  color: #d4cfc4;
+  font-size: 1.1em;
+  letter-spacing: 4px;
+  text-align: center;
+}
+
+.seqGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 70px);
+  justify-content: center;
+  gap: 10px;
+  margin: 16px 0;
+}
+
+.seqBtn {
+  width: 70px;
+  height: 70px;
+  font-size: 1.6em;
+  opacity: 0.55;
+}
+
+.seqBtn.lit {
+  background: var(--accent-soft) !important;
+  box-shadow: 0 0 20px var(--accent-soft);
+  opacity: 1;
+}
+
+.puzzleFeedback {
+  min-height: 20px;
+  margin-top: 6px;
+  color: #d4a5a5;
+  font-size: 0.85em;
+}
+
+#flash {
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  background: #fff;
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (max-width: 520px) {
+  h1 {
+    font-size: 1.8em;
+  }
+
+  #prompt {
+    bottom: 136px;
+    font-size: 0.75em;
+  }
+
+  #touchControls {
+    padding: 0 10px;
+  }
+}

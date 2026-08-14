@@ -4,163 +4,58 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>La Casa Maldita</title>
-<style>
-  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
-  html, body {
-    margin: 0; padding: 0; width: 100%; height: 100%;
-    background: #000; overflow: hidden;
-    font-family: 'Courier New', monospace;
-    color: #c9c2b8;
-  }
-  #game { position: relative; width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; }
-  canvas { background: #000; display: block; max-width: 100vw; max-height: 100vh; image-rendering: pixelated; }
-
-  /* --- Pantallas overlay --- */
-  .screen {
-    position: absolute; inset: 0; background: rgba(3,2,2,0.96);
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    text-align: center; padding: 24px; z-index: 50;
-  }
-  .hidden { display: none !important; }
-  h1 { font-size: 2.4em; color: #8a1414; text-shadow: 0 0 18px #8a1414, 0 0 40px #400; letter-spacing: 4px; margin-bottom: 6px; }
-  h1 span { color: #c9c2b8; text-shadow:none; font-size:0.4em; display:block; letter-spacing:2px; margin-top:6px;}
-  .subtitle { color: #776f66; margin-bottom: 30px; font-size: 0.9em; }
-  button {
-    background: #1a1414; color: #c9c2b8; border: 1px solid #5a2020;
-    padding: 14px 28px; font-family: inherit; font-size: 1em; letter-spacing: 2px;
-    cursor: pointer; margin: 6px; border-radius: 3px; transition: all .15s;
-  }
-  button:hover, button:active { background: #5a2020; color: #fff; }
-  button:disabled { opacity: 0.3; cursor: default; }
-  .small { font-size: 0.75em; color: #665f57; max-width: 480px; line-height: 1.6; margin-top: 20px;}
-
-  /* --- HUD --- */
-  #hud {
-    position: absolute; top: 0; left: 0; right: 0; padding: 10px 14px;
-    display: flex; justify-content: space-between; align-items: flex-start;
-    pointer-events: none; z-index: 10; font-size: 0.8em;
-  }
-  #roomName { color: #7a736a; letter-spacing: 2px; text-transform: uppercase; text-shadow: 0 0 6px #000;}
-  #saveIndicator { color: #4a5a3a; opacity: 0; transition: opacity .4s; text-shadow: 0 0 6px #000;}
-  #saveIndicator.show { opacity: 1; }
-  #muteBtn { pointer-events: auto; background: rgba(0,0,0,0.4); border: 1px solid #333; color: #776f66; padding: 6px 10px; font-size: 0.9em; }
-
-  #prompt {
-    position: absolute; bottom: 130px; left: 50%; transform: translateX(-50%);
-    background: rgba(0,0,0,0.75); border: 1px solid #444; padding: 8px 16px;
-    border-radius: 4px; font-size: 0.85em; color: #d4cfc4; z-index: 10;
-    opacity: 0; transition: opacity .15s; pointer-events: none; white-space: nowrap;
-  }
-  #prompt.show { opacity: 1; }
-
-  #message {
-    position: absolute; top: 46%; left: 50%; transform: translate(-50%,-50%);
-    background: rgba(0,0,0,0.85); border: 1px solid #5a2020; padding: 14px 22px;
-    border-radius: 4px; color: #d4a5a5; font-size: 0.9em; z-index: 20;
-    opacity: 0; transition: opacity .25s; pointer-events: none; max-width: 80vw; text-align:center;
-  }
-  #message.show { opacity: 1; }
-
-  /* --- Inventario --- */
-  #inventory {
-    position: absolute; bottom: 0; left: 0; right: 0; padding: 10px;
-    display: flex; gap: 8px; justify-content: center; z-index: 10;
-    background: linear-gradient(to top, rgba(0,0,0,0.6), transparent);
-  }
-  .item {
-    width: 46px; height: 46px; background: rgba(20,15,15,0.8); border: 1px solid #443;
-    border-radius: 4px; display: flex; align-items: center; justify-content: center;
-    font-size: 1.4em; pointer-events: auto; position: relative;
-  }
-  .item.empty { border: 1px dashed #2a2a2a; opacity: 0.4; }
-
-  /* --- Controles táctiles --- */
-  #touchControls {
-    position: absolute; bottom: 70px; left: 0; right: 0; display: flex;
-    justify-content: space-between; padding: 0 16px; z-index: 10; pointer-events: none;
-  }
-  #dpad { display: grid; grid-template-columns: repeat(3, 44px); grid-template-rows: repeat(3, 44px); gap: 3px; pointer-events: auto; }
-  #dpad button { margin: 0; padding: 0; width: 44px; height: 44px; font-size: 1.1em; background: rgba(20,15,15,0.55); border: 1px solid #443; }
-  #dpad .u{grid-area:1/2;} #dpad .l{grid-area:2/1;} #dpad .d{grid-area:3/2;} #dpad .r{grid-area:2/3;}
-  #actionBtn { pointer-events: auto; align-self: flex-end; width: 68px; height: 68px; border-radius: 50%;
-    background: rgba(90,32,32,0.5); border: 1px solid #7a2828; font-size: 0.75em; }
-
-  /* --- Modal de acertijos --- */
-  #puzzleModal {
-    position: absolute; inset: 0; background: rgba(0,0,0,0.92); z-index: 40;
-    display: flex; align-items: center; justify-content: center; padding: 20px;
-  }
-  .puzzleBox {
-    background: #0d0a0a; border: 1px solid #5a2020; border-radius: 6px; padding: 24px;
-    max-width: 440px; width: 100%; text-align: center;
-  }
-  .puzzleBox h3 { color: #b06a6a; margin-top: 0; letter-spacing: 1px; }
-  .puzzleBox p { font-size: 0.9em; line-height: 1.6; color: #b5afa6; }
-  .puzzleBox input {
-    background: #1a1414; border: 1px solid #5a2020; color: #d4cfc4; padding: 10px;
-    font-family: inherit; font-size: 1.1em; text-align: center; width: 140px; letter-spacing: 4px;
-    margin: 10px 0; border-radius: 3px;
-  }
-  .seqGrid { display: grid; grid-template-columns: repeat(2, 70px); gap: 10px; justify-content: center; margin: 16px 0; }
-  .seqBtn { width: 70px; height: 70px; font-size: 1.6em; opacity: 0.55; }
-  .seqBtn.lit { opacity: 1; background: #7a2828 !important; box-shadow: 0 0 20px #7a2828; }
-  .puzzleFeedback { min-height: 20px; color: #d4a5a5; font-size: 0.85em; margin-top: 6px; }
-
-  #flash {
-    position: absolute; inset: 0; background: #fff; z-index: 60; opacity: 0; pointer-events: none;
-  }
-</style>
+<link rel="stylesheet" href="casa_maldita.css">
 </head>
 <body>
-<div id="game">
-  <canvas id="canvas" width="800" height="500"></canvas>
+<main id="game">
+  <canvas id="canvas" width="800" height="500" aria-label="Área de juego de La Casa Maldita"></canvas>
 
   <div id="hud">
     <div id="roomName">Entrada</div>
-    <div style="display:flex; align-items:center; gap:10px;">
-      <div id="saveIndicator">● guardado</div>
-      <button id="muteBtn">🔊</button>
+    <div class="hud-actions">
+      <div id="saveIndicator" role="status" aria-live="polite">● guardado</div>
+      <button id="muteBtn" type="button" aria-label="Silenciar sonido">🔊</button>
     </div>
   </div>
 
-  <div id="prompt"></div>
-  <div id="message"></div>
+  <div id="prompt" role="status" aria-live="polite"></div>
+  <div id="message" role="status" aria-live="polite"></div>
 
-  <div id="inventory"></div>
+  <div id="inventory" aria-label="Inventario"></div>
 
   <div id="touchControls">
     <div id="dpad">
-      <button class="u" data-k="up">▲</button>
-      <button class="l" data-k="left">◀</button>
-      <button class="d" data-k="down">▼</button>
-      <button class="r" data-k="right">▶</button>
+      <button type="button" class="u" data-k="up" aria-label="Mover arriba">▲</button>
+      <button type="button" class="l" data-k="left" aria-label="Mover a la izquierda">◀</button>
+      <button type="button" class="d" data-k="down" aria-label="Mover abajo">▼</button>
+      <button type="button" class="r" data-k="right" aria-label="Mover a la derecha">▶</button>
     </div>
-    <button id="actionBtn">E</button>
+    <button id="actionBtn" type="button" aria-label="Interactuar">E</button>
   </div>
 
   <!-- Pantalla de inicio -->
   <div id="startScreen" class="screen">
     <h1>LA CASA MALDITA<span>un juego de acertijos y terror</span></h1>
     <div class="subtitle">WASD / Flechas para moverte · E para interactuar</div>
-    <button id="btnNewGame">Nueva Partida</button>
-    <button id="btnContinue" class="hidden">Continuar</button>
+    <button type="button" id="btnNewGame">Nueva Partida</button>
+    <button type="button" id="btnContinue" class="hidden">Continuar</button>
     <div class="small">Explora la casa, resuelve los acertijos, encuentra las llaves y decide tu destino. El sonido mejora la experiencia — actívalo si puedes.</div>
   </div>
 
   <!-- Pantalla de final -->
   <div id="endScreen" class="screen hidden">
     <h1 id="endTitle">FIN</h1>
-    <p id="endText" class="small" style="font-size:0.95em; color:#b5afa6;"></p>
-    <button id="btnRestart">Jugar de nuevo</button>
+    <p id="endText" class="small end-description"></p>
+    <button type="button" id="btnRestart">Jugar de nuevo</button>
   </div>
 
   <!-- Modal de acertijos -->
-  <div id="puzzleModal" class="hidden">
+  <div id="puzzleModal" class="hidden" role="dialog" aria-modal="true" aria-label="Acertijo">
     <div class="puzzleBox" id="puzzleBox"></div>
   </div>
 
   <div id="flash"></div>
-</div>
+</main>
 
 <script>
 (function(){
@@ -353,7 +248,7 @@ function clearSave(){
 }
 let saveTimeout = null;
 function showSaveIndicator(){
-  const el = document.getElementById('saveIndicator');
+  const el = saveIndicatorEl;
   el.classList.add('show');
   clearTimeout(saveTimeout);
   saveTimeout = setTimeout(()=> el.classList.remove('show'), 1200);
@@ -379,47 +274,64 @@ function hasItem(id){ return state.inventory.includes(id); }
 
 function renderInventory(){
   const box = document.getElementById('inventory');
-  box.innerHTML = "";
-  const slots = 6;
-  for (let i=0;i<slots;i++){
-    const div = document.createElement('div');
+  const fragment = document.createDocumentFragment();
+  for (let i = 0; i < 6; i++){
     const id = state.inventory[i];
+    const slot = document.createElement('div');
+    slot.className = id ? 'item' : 'item empty';
+    slot.textContent = id ? (ITEM_ICONS[id] || '❔') : '';
     if (id){
-      div.className = "item";
-      div.innerHTML = ITEM_ICONS[id] || "❔";
-      div.title = ITEM_NAMES[id] || id;
-    } else {
-      div.className = "item empty";
+      slot.title = ITEM_NAMES[id] || id;
+      slot.setAttribute('aria-label', ITEM_NAMES[id] || id);
     }
-    box.appendChild(div);
+    fragment.appendChild(slot);
   }
+  box.replaceChildren(fragment);
 }
 
 /* ==========================================================
    INPUT
    ========================================================== */
 const keys = { up:false, down:false, left:false, right:false };
+const KEY_TO_DIRECTION = Object.freeze({
+  ArrowUp: 'up', w: 'up', W: 'up',
+  ArrowDown: 'down', s: 'down', S: 'down',
+  ArrowLeft: 'left', a: 'left', A: 'left',
+  ArrowRight: 'right', d: 'right', D: 'right'
+});
+function resetKeys(){
+  keys.up = keys.down = keys.left = keys.right = false;
+}
 window.addEventListener('keydown', e=>{
-  if (['ArrowUp','w','W'].includes(e.key)) keys.up = true;
-  if (['ArrowDown','s','S'].includes(e.key)) keys.down = true;
-  if (['ArrowLeft','a','A'].includes(e.key)) keys.left = true;
-  if (['ArrowRight','d','D'].includes(e.key)) keys.right = true;
-  if (e.key === 'e' || e.key === 'E') tryInteract();
+  const direction = KEY_TO_DIRECTION[e.key];
+  if (direction){
+    e.preventDefault();
+    keys[direction] = true;
+    return;
+  }
+  if ((e.key === 'e' || e.key === 'E') && !e.repeat) tryInteract();
 });
 window.addEventListener('keyup', e=>{
-  if (['ArrowUp','w','W'].includes(e.key)) keys.up = false;
-  if (['ArrowDown','s','S'].includes(e.key)) keys.down = false;
-  if (['ArrowLeft','a','A'].includes(e.key)) keys.left = false;
-  if (['ArrowRight','d','D'].includes(e.key)) keys.right = false;
+  const direction = KEY_TO_DIRECTION[e.key];
+  if (direction){
+    e.preventDefault();
+    keys[direction] = false;
+  }
 });
+window.addEventListener('blur', resetKeys);
 document.querySelectorAll('#dpad button').forEach(btn=>{
-  const k = btn.dataset.k;
-  const set = v => e => { e.preventDefault(); keys[k] = v; };
-  btn.addEventListener('touchstart', set(true), {passive:false});
-  btn.addEventListener('touchend', set(false), {passive:false});
-  btn.addEventListener('mousedown', set(true));
-  btn.addEventListener('mouseup', set(false));
-  btn.addEventListener('mouseleave', set(false));
+  const direction = btn.dataset.k;
+  btn.addEventListener('pointerdown', e=>{
+    e.preventDefault();
+    keys[direction] = true;
+    btn.setPointerCapture?.(e.pointerId);
+  });
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(eventName=>{
+    btn.addEventListener(eventName, e=>{
+      e.preventDefault();
+      keys[direction] = false;
+    });
+  });
 });
 document.getElementById('actionBtn').addEventListener('click', tryInteract);
 
@@ -428,10 +340,14 @@ document.getElementById('actionBtn').addEventListener('click', tryInteract);
    ========================================================== */
 const PLAYER_R = 12;
 const SPEED = 2.6;
+const roomNameEl = document.getElementById('roomName');
+const promptEl = document.getElementById('prompt');
+const messageEl = document.getElementById('message');
+const saveIndicatorEl = document.getElementById('saveIndicator');
 let stepAccum = 0;
 let currentTarget = null; // objeto o puerta cercana
 
-function update(){
+function update(delta = 16.67){
   if (!state || puzzleOpen || ended) return;
   let dx=0, dy=0;
   if (keys.up) dy -= 1;
@@ -440,7 +356,8 @@ function update(){
   if (keys.right) dx += 1;
   if (dx || dy){
     const len = Math.hypot(dx,dy);
-    dx = dx/len*SPEED; dy = dy/len*SPEED;
+    const distance = SPEED * Math.min(delta / 16.67, 2);
+    dx = dx/len*distance; dy = dy/len*distance;
     const nx = clamp(state.px+dx, PLAYER_R+6, W-PLAYER_R-6);
     const ny = clamp(state.py+dy, PLAYER_R+6, H-PLAYER_R-6);
 
@@ -483,7 +400,8 @@ function isDoorLocked(door){
 function goToRoom(roomId, x, y){
   state.room = roomId;
   state.px = x; state.py = y;
-  document.getElementById('roomName').textContent = ROOMS[roomId].name;
+  roomNameEl.textContent = ROOMS[roomId].name;
+  invalidateScene();
   saveGame();
   if (roomId === "sotano") playCreak(0.25);
 }
@@ -507,7 +425,7 @@ function nearestTarget(){
 
 function updatePrompt(){
   currentTarget = nearestTarget();
-  const el = document.getElementById('prompt');
+  const el = promptEl;
   if (currentTarget){
     let label;
     if (currentTarget.kind === "object") label = "Examinar " + currentTarget.ref.name;
@@ -525,6 +443,7 @@ function tryInteract(){
     const door = currentTarget.ref;
     if (hasItem(door.key)){
       state.flags[door.id] = true;
+      invalidateScene();
       playUnlock();
       showMessage("Usas " + ITEM_NAMES[door.key] + ". La puerta se abre.");
       saveGame();
@@ -586,7 +505,7 @@ function handleObject(obj){
    ========================================================== */
 let msgTimeout = null;
 function showMessage(text, duration){
-  const el = document.getElementById('message');
+  const el = messageEl;
   el.textContent = text;
   el.classList.add('show');
   clearTimeout(msgTimeout);
@@ -615,8 +534,8 @@ function openRiddlePuzzle(onSolved){
     <input type="text" id="riddleInput" placeholder="tu respuesta" autocomplete="off">
     <div class="puzzleFeedback" id="riddleFeedback"></div>
     <div>
-      <button id="riddleSubmit">Responder</button>
-      <button id="riddleCancel">Salir</button>
+      <button type="button" id="riddleSubmit">Responder</button>
+      <button type="button" id="riddleCancel">Salir</button>
     </div>
   `);
   const input = document.getElementById('riddleInput');
@@ -644,8 +563,8 @@ function openCodePuzzle(onSolved){
     <input type="text" id="codeInput" inputmode="numeric" maxlength="4" placeholder="0000" autocomplete="off">
     <div class="puzzleFeedback" id="codeFeedback"></div>
     <div>
-      <button id="codeSubmit">Introducir</button>
-      <button id="codeCancel">Salir</button>
+      <button type="button" id="codeSubmit">Introducir</button>
+      <button type="button" id="codeCancel">Salir</button>
     </div>
   `);
   const input = document.getElementById('codeInput');
@@ -673,10 +592,10 @@ function openSequencePuzzle(onSolved){
     <h3>Libros fuera de lugar</h3>
     <p>Observa el orden en que brillan los símbolos y repítelo.</p>
     <div class="seqGrid" id="seqGrid">
-      ${icons.map((ic,i)=>`<button class="seqBtn" data-i="${i}">${ic}</button>`).join("")}
+      ${icons.map((ic,i)=>`<button type="button" class="seqBtn" data-i="${i}">${ic}</button>`).join("")}
     </div>
     <div class="puzzleFeedback" id="seqFeedback">Observa...</div>
-    <button id="seqCancel">Salir</button>
+    <button type="button" id="seqCancel">Salir</button>
   `);
   const buttons = Array.from(document.querySelectorAll('.seqBtn'));
   buttons.forEach(b => b.disabled = true);
@@ -759,76 +678,114 @@ function endGame(type){
    RENDER
    ========================================================== */
 const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d');
+const ctx = canvas.getContext('2d', { alpha: false });
+const sceneCanvas = document.createElement('canvas');
+sceneCanvas.width = W;
+sceneCanvas.height = H;
+const sceneCtx = sceneCanvas.getContext('2d', { alpha: false });
+let cachedRoomId = null;
+let lightGradient = null;
+let lightX = NaN;
+let lightY = NaN;
+let vignetteGradient = null;
 
-function draw(){
-  if (!state) { requestAnimationFrame(draw); return; }
-  const room = ROOMS[state.room];
-  ctx.fillStyle = room.bg;
-  ctx.fillRect(0,0,W,H);
+function invalidateScene(){
+  cachedRoomId = null;
+}
 
-  // suelo con textura simple
-  ctx.strokeStyle = "rgba(255,255,255,0.02)";
-  for (let x=0;x<W;x+=40){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
-  for (let y=0;y<H;y+=40){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+function renderStaticScene(room){
+  if (cachedRoomId === state.room) return;
+  sceneCtx.fillStyle = room.bg;
+  sceneCtx.fillRect(0, 0, W, H);
 
-  // paredes (borde)
-  ctx.strokeStyle = "#000";
-  ctx.lineWidth = 12;
-  ctx.strokeRect(6,6,W-12,H-12);
+  sceneCtx.strokeStyle = 'rgba(255,255,255,0.02)';
+  sceneCtx.lineWidth = 1;
+  for (let x = 0; x < W; x += 40){
+    sceneCtx.beginPath();
+    sceneCtx.moveTo(x, 0);
+    sceneCtx.lineTo(x, H);
+    sceneCtx.stroke();
+  }
+  for (let y = 0; y < H; y += 40){
+    sceneCtx.beginPath();
+    sceneCtx.moveTo(0, y);
+    sceneCtx.lineTo(W, y);
+    sceneCtx.stroke();
+  }
 
-  // puertas
+  sceneCtx.strokeStyle = '#000';
+  sceneCtx.lineWidth = 12;
+  sceneCtx.strokeRect(6, 6, W - 12, H - 12);
+
   for (const door of room.doors){
     const locked = isDoorLocked(door);
-    ctx.fillStyle = locked ? "#3a1414" : "#2a3a2a";
-    ctx.fillRect(door.x, door.y, door.w, door.h);
-    ctx.strokeStyle = locked ? "#6a2020" : "#3a5a3a";
-    ctx.lineWidth = 2;
-    ctx.strokeRect(door.x, door.y, door.w, door.h);
+    sceneCtx.fillStyle = locked ? '#3a1414' : '#2a3a2a';
+    sceneCtx.fillRect(door.x, door.y, door.w, door.h);
+    sceneCtx.strokeStyle = locked ? '#6a2020' : '#3a5a3a';
+    sceneCtx.lineWidth = 2;
+    sceneCtx.strokeRect(door.x, door.y, door.w, door.h);
     if (locked){
-      ctx.fillStyle = "#c9a0a0"; ctx.font = "16px monospace"; ctx.textAlign = "center";
-      ctx.fillText("🔒", door.x+door.w/2, door.y+door.h/2+6);
+      sceneCtx.fillStyle = '#c9a0a0';
+      sceneCtx.font = '16px monospace';
+      sceneCtx.textAlign = 'center';
+      sceneCtx.fillText('🔒', door.x + door.w / 2, door.y + door.h / 2 + 6);
     }
   }
 
-  // objetos
   for (const obj of room.objects){
-    ctx.fillStyle = obj.color;
-    ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
-    ctx.strokeStyle = "rgba(255,255,255,0.08)";
-    ctx.strokeRect(obj.x, obj.y, obj.w, obj.h);
-    ctx.font = "22px sans-serif"; ctx.textAlign = "center";
-    ctx.fillText(obj.label, obj.x+obj.w/2, obj.y+obj.h/2+8);
+    sceneCtx.fillStyle = obj.color;
+    sceneCtx.fillRect(obj.x, obj.y, obj.w, obj.h);
+    sceneCtx.strokeStyle = 'rgba(255,255,255,0.08)';
+    sceneCtx.strokeRect(obj.x, obj.y, obj.w, obj.h);
+    sceneCtx.font = '22px sans-serif';
+    sceneCtx.textAlign = 'center';
+    sceneCtx.fillText(obj.label, obj.x + obj.w / 2, obj.y + obj.h / 2 + 8);
   }
 
-  // jugador
-  ctx.beginPath();
-  ctx.arc(state.px, state.py, PLAYER_R, 0, Math.PI*2);
-  ctx.fillStyle = "#d8cbb0";
-  ctx.fill();
-  ctx.strokeStyle = "#000"; ctx.lineWidth = 2; ctx.stroke();
-
-  // --- oscuridad / linterna ---
-  const grd = ctx.createRadialGradient(state.px, state.py, 30, state.px, state.py, 230);
-  grd.addColorStop(0, "rgba(0,0,0,0)");
-  grd.addColorStop(0.55, "rgba(0,0,0,0.55)");
-  grd.addColorStop(1, "rgba(0,0,0,0.94)");
-  ctx.fillStyle = grd;
-  ctx.fillRect(0,0,W,H);
-
-  // viñeta extra
-  const vgn = ctx.createRadialGradient(W/2,H/2, H/2*0.6, W/2,H/2, H/1.1);
-  vgn.addColorStop(0, "rgba(0,0,0,0)");
-  vgn.addColorStop(1, "rgba(0,0,0,0.6)");
-  ctx.fillStyle = vgn;
-  ctx.fillRect(0,0,W,H);
-
-  requestAnimationFrame(draw);
+  cachedRoomId = state.room;
 }
 
-function loop(){
-  update();
-  setTimeout(loop, 1000/60);
+function draw(){
+  if (!state) return;
+  const room = ROOMS[state.room];
+  renderStaticScene(room);
+  ctx.drawImage(sceneCanvas, 0, 0);
+
+  ctx.beginPath();
+  ctx.arc(state.px, state.py, PLAYER_R, 0, Math.PI * 2);
+  ctx.fillStyle = '#d8cbb0';
+  ctx.fill();
+  ctx.strokeStyle = '#000';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  if (state.px !== lightX || state.py !== lightY){
+    lightGradient = ctx.createRadialGradient(state.px, state.py, 30, state.px, state.py, 230);
+    lightGradient.addColorStop(0, 'rgba(0,0,0,0)');
+    lightGradient.addColorStop(0.55, 'rgba(0,0,0,0.55)');
+    lightGradient.addColorStop(1, 'rgba(0,0,0,0.94)');
+    lightX = state.px;
+    lightY = state.py;
+  }
+  ctx.fillStyle = lightGradient;
+  ctx.fillRect(0, 0, W, H);
+
+  if (!vignetteGradient){
+    vignetteGradient = ctx.createRadialGradient(W / 2, H / 2, H / 2 * 0.6, W / 2, H / 2, H / 1.1);
+    vignetteGradient.addColorStop(0, 'rgba(0,0,0,0)');
+    vignetteGradient.addColorStop(1, 'rgba(0,0,0,0.6)');
+  }
+  ctx.fillStyle = vignetteGradient;
+  ctx.fillRect(0, 0, W, H);
+}
+
+let previousFrameTime = 0;
+function frame(timestamp){
+  const delta = previousFrameTime ? Math.min(timestamp - previousFrameTime, 50) : 16.67;
+  previousFrameTime = timestamp;
+  update(delta);
+  draw();
+  requestAnimationFrame(frame);
 }
 
 /* ==========================================================
@@ -844,12 +801,14 @@ function startGame(loaded){
   document.getElementById('startScreen').classList.add('hidden');
   state = loaded || freshState();
   ended = false;
-  document.getElementById('roomName').textContent = ROOMS[state.room].name;
+  invalidateScene();
+  lightX = NaN;
+  lightY = NaN;
+  roomNameEl.textContent = ROOMS[state.room].name;
   renderInventory();
   initAudio();
   if (actx && actx.state === 'suspended') actx.resume();
-  loop();
-  draw();
+
 }
 
 document.getElementById('btnNewGame').addEventListener('click', ()=>{
@@ -868,7 +827,7 @@ document.getElementById('btnRestart').addEventListener('click', ()=>{
 const existing = loadGame();
 if (existing) document.getElementById('btnContinue').classList.remove('hidden');
 
-requestAnimationFrame(draw);
+requestAnimationFrame(frame);
 })();
 </script>
 </body>
