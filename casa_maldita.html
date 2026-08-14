@@ -64,82 +64,209 @@
 /* ==========================================================
    AUDIO — todo generado por código, sin archivos externos
    ========================================================== */
-let actx = null, masterGain = null, muted = false, droneNodes = null;
+let actx = null;
+let masterGain = null;
+let ambientBus = null;
+let effectsBus = null;
+let muted = false;
+let droneNodes = null;
+let ambientTimer = null;
+const noiseBuffers = new Map();
+
 function initAudio(){
-  if (actx) return;
-  actx = new (window.AudioContext || window.webkitAudioContext)();
+  if (actx){
+    actx.resume?.();
+    return;
+  }
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextClass) return;
+
+  actx = new AudioContextClass();
   masterGain = actx.createGain();
-  masterGain.gain.value = 0.5;
+  masterGain.gain.value = muted ? 0 : 0.5;
   masterGain.connect(actx.destination);
-  startDrone();
+
+  ambientBus = actx.createGain();
+  ambientBus.gain.value = 0.72;
+  ambientBus.connect(masterGain);
+
+  effectsBus = actx.createGain();
+  effectsBus.gain.value = 1;
+  effectsBus.connect(masterGain);
+
+  startAmbient();
   scheduleCreak();
+  scheduleAmbientPulse();
 }
-function startDrone(){
-  const osc1 = actx.createOscillator();
-  const osc2 = actx.createOscillator();
-  osc1.type = 'sine'; osc1.frequency.value = 45;
-  osc2.type = 'sine'; osc2.frequency.value = 46.5;
-  const g = actx.createGain(); g.gain.value = 0.06;
-  const lfo = actx.createOscillator(); lfo.frequency.value = 0.07;
-  const lfoGain = actx.createGain(); lfoGain.gain.value = 0.03;
-  lfo.connect(lfoGain); lfoGain.connect(g.gain);
-  osc1.connect(g); osc2.connect(g); g.connect(masterGain);
-  osc1.start(); osc2.start(); lfo.start();
-  droneNodes = {osc1,osc2,lfo,g};
+
+function setMuted(value){
+  muted = Boolean(value);
+  document.getElementById('muteBtn').textContent = muted ? '🔇' : '🔊';
+  document.getElementById('muteBtn').setAttribute('aria-label', muted ? 'Activar sonido' : 'Silenciar sonido');
+  if (masterGain && actx){
+    const target = muted ? 0 : 0.5;
+    masterGain.gain.cancelScheduledValues(actx.currentTime);
+    masterGain.gain.setTargetAtTime(target, actx.currentTime, 0.04);
+  }
 }
-function noiseBuffer(duration){
+
+function createAmbientOscillator(frequency, type, volume){
+  const oscillator = actx.createOscillator();
+  const gain = actx.createGain();
+  oscillator.type = type;
+  oscillator.frequency.value = frequency;
+  gain.gain.value = volume;
+  oscillator.connect(gain);
+  gain.connect(ambientBus);
+  oscillator.start();
+  return { oscillator, gain };
+}
+
+function startAmbient(){
+  const lowDrone = createAmbientOscillator(45, 'sine', 0.055);
+  const detunedDrone = createAmbientOscillator(46.5, 'sine', 0.045);
+  const harmonicDrone = createAmbientOscillator(91, 'triangle', 0.012);
+  const droneLfo = actx.createOscillator();
+  const droneLfoGain = actx.createGain();
+  droneLfo.frequency.value = 0.07;
+  droneLfoGain.gain.value = 0.025;
+  droneLfo.connect(droneLfoGain);
+  droneLfoGain.connect(lowDrone.gain);
+  droneLfo.start();
+
+  const windSource = actx.createBufferSource();
+  const windFilter = actx.createBiquadFilter();
+  const windGain = actx.createGain();
+  const windLfo = actx.createOscillator();
+  const windLfoGain = actx.createGain();
+  windSource.buffer = getNoiseBuffer(2.5);
+  windSource.loop = true;
+  windFilter.type = 'lowpass';
+  windFilter.frequency.value = 520;
+  windFilter.Q.value = 0.7;
+  windGain.gain.value = 0.018;
+  windLfo.frequency.value = 0.045;
+  windLfoGain.gain.value = 0.012;
+  windLfo.connect(windLfoGain);
+  windLfoGain.connect(windGain.gain);
+  windSource.connect(windFilter);
+  windFilter.connect(windGain);
+  windGain.connect(ambientBus);
+  windSource.start();
+  windLfo.start();
+
+  droneNodes = { lowDrone, detunedDrone, harmonicDrone, droneLfo, windSource, windFilter, windGain, windLfo };
+}
+
+function getNoiseBuffer(duration){
+  if (!actx) return null;
+  const key = String(duration);
+  if (noiseBuffers.has(key)) return noiseBuffers.get(key);
   const rate = actx.sampleRate;
-  const buf = actx.createBuffer(1, rate*duration, rate);
-  const d = buf.getChannelData(0);
-  for (let i=0;i<d.length;i++) d[i] = (Math.random()*2-1) * Math.pow(1 - i/d.length, 2);
-  return buf;
+  const buffer = actx.createBuffer(1, Math.ceil(rate * duration), rate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < data.length; i++){
+    const fade = Math.pow(1 - i / data.length, 2);
+    data[i] = (Math.random() * 2 - 1) * fade;
+  }
+  noiseBuffers.set(key, buffer);
+  return buffer;
 }
+
 function playCreak(vol){
-  if (!actx || muted) return;
-  const src = actx.createBufferSource();
-  src.buffer = noiseBuffer(0.4 + Math.random()*0.6);
-  const filt = actx.createBiquadFilter();
-  filt.type = 'bandpass';
-  filt.frequency.value = 200 + Math.random()*400;
-  filt.Q.value = 4;
-  const g = actx.createGain();
-  g.gain.value = vol || 0.15;
-  src.connect(filt); filt.connect(g); g.connect(masterGain);
-  src.start();
+  if (!actx || muted || !effectsBus) return;
+  const duration = 0.4 + Math.random() * 0.6;
+  const source = actx.createBufferSource();
+  const filter = actx.createBiquadFilter();
+  const gain = actx.createGain();
+  source.buffer = getNoiseBuffer(1.5);
+  filter.type = 'bandpass';
+  filter.frequency.value = 200 + Math.random() * 400;
+  filter.Q.value = 4;
+  gain.gain.value = vol || 0.15;
+  source.connect(filter);
+  filter.connect(gain);
+  gain.connect(effectsBus);
+  source.start(0, 0, duration);
 }
+
 function scheduleCreak(){
-  playCreak(0.08 + Math.random()*0.08);
-  setTimeout(scheduleCreak, 6000 + Math.random()*9000);
+  if (actx && !muted) playCreak(0.08 + Math.random() * 0.08);
+  setTimeout(scheduleCreak, 6000 + Math.random() * 9000);
 }
-function playTone(freq, dur, type, vol){
+
+function scheduleAmbientPulse(){
+  if (actx && !muted){
+    const notes = [55, 65.41, 73.42, 82.41];
+    const note = notes[Math.floor(Math.random() * notes.length)];
+    playTone(note, 2.8, 'sine', 0.035, ambientBus);
+  }
+  ambientTimer = setTimeout(scheduleAmbientPulse, 6500 + Math.random() * 5000);
+}
+
+function playTone(freq, dur, type, vol, destination){
   if (!actx || muted) return;
-  const o = actx.createOscillator();
-  const g = actx.createGain();
-  o.type = type || 'sine'; o.frequency.value = freq;
-  g.gain.value = vol || 0.2;
-  g.gain.exponentialRampToValueAtTime(0.001, actx.currentTime + dur);
-  o.connect(g); g.connect(masterGain);
-  o.start(); o.stop(actx.currentTime + dur);
+  const oscillator = actx.createOscillator();
+  const gain = actx.createGain();
+  const now = actx.currentTime;
+  const target = destination || effectsBus;
+  oscillator.type = type || 'sine';
+  oscillator.frequency.value = freq;
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.exponentialRampToValueAtTime(Math.max(vol || 0.2, 0.001), now + 0.02);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+  oscillator.connect(gain);
+  gain.connect(target);
+  oscillator.start(now);
+  oscillator.stop(now + dur + 0.03);
 }
-function playStep(){ if(!actx||muted) return; playCreak(0.03); }
-function playUnlock(){ playTone(220,0.15,'square',0.15); setTimeout(()=>playTone(330,0.2,'square',0.15),120); }
-function playPickup(){ playTone(500,0.1,'sine',0.15); setTimeout(()=>playTone(750,0.15,'sine',0.15),80); }
-function playError(){ playTone(90,0.3,'sawtooth',0.2); }
-function playSuccess(){ playTone(400,0.1,'sine',0.2); setTimeout(()=>playTone(600,0.1,'sine',0.2),90); setTimeout(()=>playTone(900,0.2,'sine',0.2),180); }
+
+function playStep(){
+  if (!actx || muted) return;
+  playCreak(0.03);
+}
+
+function playUnlock(){
+  playTone(180, 0.12, 'square', 0.12);
+  setTimeout(() => playTone(270, 0.16, 'square', 0.12), 100);
+  setTimeout(() => playTone(405, 0.24, 'sine', 0.1), 210);
+}
+
+function playDoorTransition(){
+  playTone(125, 0.35, 'triangle', 0.08);
+  setTimeout(() => playTone(92, 0.45, 'sine', 0.06), 130);
+}
+
+function playPickup(){
+  playTone(500, 0.1, 'sine', 0.15);
+  setTimeout(() => playTone(750, 0.15, 'sine', 0.15), 80);
+}
+
+function playError(){ playTone(90, 0.3, 'sawtooth', 0.2); }
+
+function playSuccess(){
+  playTone(400, 0.1, 'sine', 0.2);
+  setTimeout(() => playTone(600, 0.1, 'sine', 0.2), 90);
+  setTimeout(() => playTone(900, 0.2, 'sine', 0.2), 180);
+}
+
 function playJumpscare(){
-  if (!actx || muted) return;
-  const src = actx.createBufferSource();
-  src.buffer = noiseBuffer(0.6);
-  const g = actx.createGain(); g.gain.value = 0.5;
-  src.connect(g); g.connect(masterGain);
-  src.start();
-  playTone(60,0.8,'sawtooth',0.3);
+  if (!actx || muted || !effectsBus) return;
+  const source = actx.createBufferSource();
+  const gain = actx.createGain();
+  source.buffer = getNoiseBuffer(0.8);
+  gain.gain.value = 0.5;
+  source.connect(gain);
+  gain.connect(effectsBus);
+  source.start();
+  playTone(60, 0.8, 'sawtooth', 0.3);
   flashScreen();
 }
+
 function flashScreen(){
   const f = document.getElementById('flash');
   f.style.transition = 'none'; f.style.opacity = '0.85';
-  requestAnimationFrame(()=>{ f.style.transition='opacity .5s'; f.style.opacity='0'; });
+  requestAnimationFrame(() => { f.style.transition = 'opacity .5s'; f.style.opacity = '0'; });
 }
 
 /* ==========================================================
@@ -403,6 +530,7 @@ function goToRoom(roomId, x, y){
   roomNameEl.textContent = ROOMS[roomId].name;
   invalidateScene();
   saveGame();
+  playDoorTransition();
   if (roomId === "sotano") playCreak(0.25);
 }
 
@@ -792,9 +920,7 @@ function frame(timestamp){
    INICIO / CONTROL DE PANTALLAS
    ========================================================== */
 document.getElementById('muteBtn').addEventListener('click', ()=>{
-  muted = !muted;
-  document.getElementById('muteBtn').textContent = muted ? "🔇" : "🔊";
-  if (masterGain) masterGain.gain.value = muted ? 0 : 0.5;
+  setMuted(!muted);
 });
 
 function startGame(loaded){
